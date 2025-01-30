@@ -5,6 +5,7 @@ from pydantic import BaseModel
 from openai import OpenAI, OpenAIError
 from dotenv import load_dotenv
 from fastapi.middleware.cors import CORSMiddleware
+import httpx
 
 app = FastAPI()
 
@@ -23,6 +24,9 @@ load_dotenv()
 # Initialize OpenAI client with API key from environment variable
 client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 
+# Load X_API_KEY from environment variables
+X_API_KEY = os.getenv("LINKEDIN_API_KEY")
+
 # Define Pydantic models
 class ResumeData(BaseModel):
     full_name: str
@@ -39,6 +43,17 @@ class ResumeRequest(BaseModel):
 
 class ResumeResponse(BaseModel):
     resume_data: ResumeData
+
+# Define Pydantic models for LinkedIn responses
+class JobResponse(BaseModel):
+    job_id: str
+    status: str
+
+class JobStatusResponse(BaseModel):
+    job_id: str
+    status: str
+    result: Optional[dict] = None
+    error: Optional[str] = None
 
 @app.post("/extract_resume", response_model=ResumeResponse)
 async def extract_resume(request: ResumeRequest):
@@ -71,3 +86,21 @@ async def extract_resume(request: ResumeRequest):
         raise HTTPException(status_code=500, detail="Unexpected response format from OpenAI.")
     except Exception as e:
         raise HTTPException(status_code=500, detail=f"An error occurred: {str(e)}")
+
+@app.get("/api/v1/linkedin/profile/{username}", response_model=JobResponse)
+async def crawl_linkedin_profile(username: str):
+    url = f"https://profile-fetch.hyrenet-staging.in/api/v1/linkedin/profile/{username}"
+    headers = {"X-API-Key": X_API_KEY}
+    async with httpx.AsyncClient() as client:
+        response = await client.post(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+@app.get("/api/v1/linkedin/job/{job_id}", response_model=JobStatusResponse)
+async def get_job_status(job_id: str):
+    url = f"https://profile-fetch.hyrenet-staging.in/api/v1/linkedin/job/{job_id}"
+    headers = {"X-API-Key": X_API_KEY}
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
