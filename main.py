@@ -28,6 +28,30 @@ client = OpenAI(api_key=os.getenv("OPENAI_API_KEY"))
 X_API_KEY = os.getenv("LINKEDIN_API_KEY")
 
 # Define Pydantic models
+class Experience(BaseModel):
+    company: Optional[str] = None
+    position: Optional[str] = None
+    location: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    description: Optional[str] = None
+    key_achievements: Optional[List[str]] = None
+
+class GitHubProject(BaseModel):
+    title: Optional[str] = None
+    subtitle: Optional[str] = None
+    date: Optional[str] = None
+    description: Optional[str] = None
+
+class Education(BaseModel):
+    institution_name: Optional[str] = None
+    degree: Optional[str] = None
+    field_of_study: Optional[str] = None
+    grade_gpa: Optional[str] = None
+    start_date: Optional[str] = None
+    end_date: Optional[str] = None
+    description: Optional[str] = None
+
 class ResumeData(BaseModel):
     full_name: str
     professional_title: str
@@ -37,9 +61,14 @@ class ResumeData(BaseModel):
     website_url: Optional[str] = None
     linkedin_url: Optional[str] = None
     professional_summary: str
+    skills: Optional[List[str]] = None
+    experience: Optional[List[Experience]] = None
+    github_projects: Optional[List[GitHubProject]] = None
+    education: Optional[List[Education]] = None
 
 class ResumeRequest(BaseModel):
     resume_text: str
+    job_description: Optional[str] = None
 
 class ResumeResponse(BaseModel):
     resume_data: ResumeData
@@ -88,19 +117,25 @@ class GitHubResponse(BaseModel):
 @app.post("/extract_resume", response_model=ResumeResponse)
 async def extract_resume(request: ResumeRequest):
     try:
+        # Create dynamic user message based on job_description
+        if request.job_description:
+            user_intro = f"For a resume of a Job Seeker of the JD - {request.job_description}, I need to extract the following information:\n\n"
+        else:
+            user_intro = "For a resume of a Job Seeker, I need to extract the following information:\n\n"
+        
+        user_content = (
+            user_intro +
+            "Extract the following information from the resume text and provide it in JSON format:\n\n"
+            "Full Name, Professional Title, Email, Phone Number, Location, Website URL, LinkedIn URL, Professional Summary, skills, experience, GitHub projects, education.\n\n"
+            f"User Data:\n{request.resume_text}"
+        )
+        
         # Call OpenAI API with Structured Outputs
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
                 {"role": "system", "content": "You are an assistant that extracts resume information into structured JSON."},
-                {
-                    "role": "user",
-                    "content": (
-                        "Extract the following information from the resume text and provide it in JSON format:\n\n"
-                        "Full Name, Professional Title, Email, Phone Number, Location, Website URL, LinkedIn URL, Professional Summary.\n\n"
-                        f"Resume Text:\n{request.resume_text}"
-                    )
-                }
+                {"role": "user", "content": user_content}
             ],
             response_format=ResumeData,
         )
