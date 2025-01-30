@@ -126,7 +126,7 @@ async def extract_resume(request: ResumeRequest):
         user_content = (
             user_intro +
             "Extract the following information from the resume text and provide it in JSON format:\n\n"
-            "Full Name, Professional Title, Email, Phone Number, Location, Website URL, LinkedIn URL, Professional Summary, skills, experience, GitHub projects, education.\n\n"
+            "Full Name, Professional Title, Email, Phone Number, Location, Website URL, LinkedIn URL, Professional Summary, skills ( Best Skills 2 based on the projects, only if none is present with linkedIn), experience, GitHub projects (Best two based on Stars or Relatable to Job needs, and add Subtitle as one liner), education, try to fill  related data but dont give false data.\n\n"
             f"User Data:\n{request.resume_text}"
         )
         
@@ -134,7 +134,7 @@ async def extract_resume(request: ResumeRequest):
         completion = client.beta.chat.completions.parse(
             model="gpt-4o-mini",
             messages=[
-                {"role": "system", "content": "You are an assistant that extracts resume information into structured JSON."},
+                {"role": "system", "content": "You are an data expert assistant that extracts or digest and give resume related information into structured JSON from the data provided"},
                 {"role": "user", "content": user_content}
             ],
             response_format=ResumeData,
