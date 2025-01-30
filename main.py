@@ -1,5 +1,5 @@
 import os
-from typing import Optional
+from typing import Optional, List
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 from openai import OpenAI, OpenAIError
@@ -55,6 +55,36 @@ class JobStatusResponse(BaseModel):
     result: Optional[dict] = None
     error: Optional[str] = None
 
+# Define Pydantic models for GitHub profiles
+class GitHubProfile(BaseModel):
+    login: Optional[str]
+    name: Optional[str]
+    bio: Optional[str]
+    company: Optional[str]
+    blog: str
+    location: Optional[str]
+    email: Optional[str]
+    twitter_username: Optional[str]
+    public_repos: int
+    followers: int
+    following: int
+    created_at: str
+    updated_at: str
+
+class Repository(BaseModel):
+    name: str
+    description: Optional[str]
+    html_url: str
+    language: Optional[str]
+    stargazers_count: int
+    forks_count: int
+    created_at: str
+    updated_at: str
+
+class GitHubResponse(BaseModel):
+    profile: GitHubProfile
+    repositories: List[Repository]
+
 @app.post("/extract_resume", response_model=ResumeResponse)
 async def extract_resume(request: ResumeRequest):
     try:
@@ -104,3 +134,16 @@ async def get_job_status(job_id: str):
         response = await client.get(url, headers=headers)
         response.raise_for_status()
         return response.json()
+
+@app.get("/api/v1/github/profile/{username}", response_model=GitHubResponse)
+async def fetch_github_profile(username: str):
+    url = f"https://profile-fetch.hyrenet-staging.in/api/v1/github/profile/{username}"
+    headers = {
+        "accept": "application/json",
+        "X-API-Key": X_API_KEY
+    }
+    async with httpx.AsyncClient() as client:
+        response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
