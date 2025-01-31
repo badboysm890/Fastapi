@@ -1,6 +1,6 @@
 import os
 from typing import Optional, List
-from fastapi import FastAPI, HTTPException
+from fastapi import FastAPI, HTTPException, UploadFile, File
 from pydantic import BaseModel
 from openai import OpenAI, OpenAIError
 from dotenv import load_dotenv
@@ -179,6 +179,20 @@ async def fetch_github_profile(username: str):
     }
     async with httpx.AsyncClient() as client:
         response = await client.get(url, headers=headers)
+        response.raise_for_status()
+        return response.json()
+
+@app.post("/api/v1/resume/analyze")
+async def analyze_resume(file: UploadFile = File(...)):
+    headers = {"X-API-Key": X_API_KEY}
+    file_bytes = await file.read()
+    files = {"file": (file.filename, file_bytes, file.content_type)}
+    async with httpx.AsyncClient() as client:
+        response = await client.post(
+            "https://profile-fetch.hyrenet-staging.in/api/v1/resume/analyze",
+            headers=headers,
+            files=files
+        )
         response.raise_for_status()
         return response.json()
 
